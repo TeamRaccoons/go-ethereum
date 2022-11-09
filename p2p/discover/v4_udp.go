@@ -79,6 +79,9 @@ type UDPv4 struct {
 	gotreply        chan reply
 	closeCtx        context.Context
 	cancelCloseCtx  context.CancelFunc
+
+	// Validated address contains address which is valid to be connected to
+	validatedAddress map[string]bool
 }
 
 // replyMatcher represents a pending reply.
@@ -130,16 +133,17 @@ func ListenV4(c UDPConn, ln *enode.LocalNode, cfg Config) (*UDPv4, error) {
 	cfg = cfg.withDefaults()
 	closeCtx, cancel := context.WithCancel(context.Background())
 	t := &UDPv4{
-		conn:            c,
-		priv:            cfg.PrivateKey,
-		netrestrict:     cfg.NetRestrict,
-		localNode:       ln,
-		db:              ln.Database(),
-		gotreply:        make(chan reply),
-		addReplyMatcher: make(chan *replyMatcher),
-		closeCtx:        closeCtx,
-		cancelCloseCtx:  cancel,
-		log:             cfg.Log,
+		conn:             c,
+		priv:             cfg.PrivateKey,
+		netrestrict:      cfg.NetRestrict,
+		localNode:        ln,
+		db:               ln.Database(),
+		gotreply:         make(chan reply),
+		addReplyMatcher:  make(chan *replyMatcher),
+		closeCtx:         closeCtx,
+		cancelCloseCtx:   cancel,
+		log:              cfg.Log,
+		validatedAddress: cfg.ValidatedAddress,
 	}
 
 	tab, err := newTable(t, ln.Database(), cfg.Bootnodes, t.log)
@@ -547,6 +551,18 @@ func (t *UDPv4) handlePacket(from *net.UDPAddr, buf []byte) error {
 		return err
 	}
 	packet := t.wrapPacket(rawpacket)
+
+	if len(t.validatedAddress) > 0 {
+		// Check whether the packet is coming from validated pubkey
+		fromPubkey, _ := decodePubkey(crypto.S256(), fromKey[:])
+		fromAddress := crypto.PubkeyToAddress(*fromPubkey)
+
+		// Drop the packet if it's coming from non validated node
+		if !t.validatedAddress[fromAddress.String()] {
+			return errors.New("non validated node")
+		}
+	}
+
 	fromID := fromKey.ID()
 	if err == nil && packet.preverify != nil {
 		err = packet.preverify(packet, from, fromID, fromKey)
