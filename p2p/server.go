@@ -160,6 +160,9 @@ type Config struct {
 	Logger log.Logger `toml:",omitempty"`
 
 	clock mclock.Clock
+
+	// Validated address contains address which is valid to be connected to
+	ValidatedAddress map[string]bool
 }
 
 // Server manages all peer connections.
@@ -591,11 +594,12 @@ func (srv *Server) setupDiscovery() error {
 			sconn = &sharedUDPConn{conn, unhandled}
 		}
 		cfg := discover.Config{
-			PrivateKey:  srv.PrivateKey,
-			NetRestrict: srv.NetRestrict,
-			Bootnodes:   srv.BootstrapNodes,
-			Unhandled:   unhandled,
-			Log:         srv.log,
+			PrivateKey:       srv.PrivateKey,
+			NetRestrict:      srv.NetRestrict,
+			Bootnodes:        srv.BootstrapNodes,
+			Unhandled:        unhandled,
+			Log:              srv.log,
+			ValidatedAddress: srv.Config.ValidatedAddress,
 		}
 		ntab, err := discover.ListenV4(conn, srv.localnode, cfg)
 		if err != nil {
@@ -975,6 +979,18 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	} else {
 		c.node = nodeFromConn(remotePubkey, c.fd)
 	}
+
+	if len(srv.ValidatedAddress) > 0 {
+		// Check if the connecting peer is validated
+		peerPubkey := c.node.Pubkey()
+		peerAddress := crypto.PubkeyToAddress(*peerPubkey)
+
+		// Reject the connection if it's from non validated address
+		if !srv.Config.ValidatedAddress[peerAddress.String()] {
+			return errors.New("non validated node")
+		}
+	}
+
 	clog := srv.log.New("id", c.node.ID(), "addr", c.fd.RemoteAddr(), "conn", c.flags)
 	err = srv.checkpoint(c, srv.checkpointPostHandshake)
 	if err != nil {
