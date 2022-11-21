@@ -247,6 +247,7 @@ loop:
 				go tab.doRefresh(refreshDone)
 			}
 		case <-refreshDone:
+			tab.log.Trace("Lookup table refresh completed")
 			for _, ch := range waiting {
 				close(ch)
 			}
