@@ -1146,3 +1146,35 @@ func (srv *Server) PeersInfo() []*PeerInfo {
 	}
 	return infos
 }
+
+// Remove a pubkey from validated address list. This internally invoke RemoveValidatedAddress
+func (srv *Server) RemoveValidatedPubkey(pubkey ecdsa.PublicKey) {
+	address := crypto.PubkeyToAddress(pubkey)
+	srv.RemoveValidatedAddress(address)
+}
+
+// Remove a address from validated address list. This will disconnect the node if it's currently connected, and will not attempt to connect to it again until it's being added back to the validated address list.
+func (srv *Server) RemoveValidatedAddress(address common.Address) {
+	for _, peer := range srv.Peers() {
+		peerAddress := crypto.PubkeyToAddress(*peer.Node().Pubkey())
+		if peerAddress == address {
+			srv.RemovePeer(peer.Node())
+			break
+		}
+	}
+	delete(srv.Config.ValidatedAddress, address.String())
+}
+
+// Append a new address to validated address list. This internally invoke AddValidatedAddress
+func (srv *Server) AddValidatedPubkey(pubkey ecdsa.PublicKey) {
+	address := crypto.PubkeyToAddress(pubkey)
+	srv.AddValidatedAddress(address)
+}
+
+// Append a new address to validated address list. This allow the newly added address to be able to join to the network.
+func (srv *Server) AddValidatedAddress(address common.Address) {
+	if !srv.Config.ValidatedAddress[address.String()] {
+		srv.Config.ValidatedAddress[address.String()] = true
+		srv.ntab.AddValidatedAddress(address)
+	}
+}
