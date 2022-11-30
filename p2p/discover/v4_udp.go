@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/discover/v4wire"
@@ -800,4 +801,16 @@ func (t *UDPv4) verifyENRResponse(h *packetHandlerV4, from *net.UDPAddr, fromID 
 		return errUnsolicitedReply
 	}
 	return nil
+}
+
+// This remove the address from the validated address list. The node will drop all packets coming from this address in the future.
+func (t *UDPv4) RemoveValidatedAddress(address common.Address) {
+	delete(t.validatedAddress, address.String())
+}
+
+// This add the new address into the validated address list.
+func (t *UDPv4) AddValidatedAddress(address common.Address) {
+	if !t.validatedAddress[address.String()] {
+		t.validatedAddress[address.String()] = true
+	}
 }
