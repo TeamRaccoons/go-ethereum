@@ -1155,6 +1155,8 @@ func (srv *Server) RemoveValidatedPubkey(pubkey ecdsa.PublicKey) {
 
 // Remove a address from validated address list. This will disconnect the node if it's currently connected, and will not attempt to connect to it again until it's being added back to the validated address list.
 func (srv *Server) RemoveValidatedAddress(address common.Address) {
+	srv.lock.Lock()
+	defer srv.lock.Unlock()
 	for _, peer := range srv.Peers() {
 		peerAddress := crypto.PubkeyToAddress(*peer.Node().Pubkey())
 		if peerAddress == address {
@@ -1173,6 +1175,8 @@ func (srv *Server) AddValidatedPubkey(pubkey ecdsa.PublicKey) {
 
 // Append a new address to validated address list. This allow the newly added address to be able to join to the network.
 func (srv *Server) AddValidatedAddress(address common.Address) {
+	srv.lock.Lock()
+	defer srv.lock.Unlock()
 	if !srv.Config.ValidatedAddress[address.String()] {
 		srv.Config.ValidatedAddress[address.String()] = true
 		srv.ntab.AddValidatedAddress(address)
