@@ -53,8 +53,8 @@ const (
 	bucketIPLimit, bucketSubnet = 2, 24 // at most 2 addresses from the same /24
 	tableIPLimit, tableSubnet   = 10, 24
 
-	refreshInterval    = 30 * time.Minute
-	revalidateInterval = 10 * time.Second
+	refreshInterval    = 10 * time.Second // Faster discovery refresh, for testing purpose
+	revalidateInterval = 5 * time.Second  // Faster liveness validation
 	copyNodesInterval  = 30 * time.Second
 	seedMinTableTime   = 5 * time.Minute
 	seedCount          = 30
