@@ -1160,7 +1160,7 @@ func (srv *Server) RemoveValidatedAddress(address common.Address) {
 	for _, peer := range srv.Peers() {
 		peerAddress := crypto.PubkeyToAddress(*peer.Node().Pubkey())
 		if peerAddress == address {
-			srv.RemovePeer(peer.Node())
+			peer.Disconnect(DiscQuitting)
 			break
 		}
 	}
